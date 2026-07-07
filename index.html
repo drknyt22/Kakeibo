@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1C1B1E">
+<title>Kakeibo — Budget Ledger</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1C1B1E;
+    --surface:#26252A;
+    --surface2:#302E34;
+    --border:#3c3a40;
+    --text:#EDE8DE;
+    --text-dim:#a39b8b;
+    --accent:#C43D2E;
+    --accent-dim:#8f2c21;
+    --positive:#6f9c82;
+    --negative:#C43D2E;
+    --font-display:'Shippori Mincho', serif;
+    --font-body:'Noto Sans JP', sans-serif;
+    --font-num:'Zen Kaku Gothic New', sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#0f0e10;
+    font-family:var(--font-body);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  #app{
+    width:100%;
+    max-width:480px;
+    min-height:100vh;
+    background:var(--bg);
+    position:relative;
+    box-shadow:0 0 60px rgba(0,0,0,0.5);
+    border-left:1px solid var(--border);
+    border-right:1px solid var(--border);
+    padding-top:calc(var(--safe-top));
+    padding-bottom:calc(64px + var(--safe-bottom));
+  }
+  @media (min-width:481px){
+    body{background:
+      repeating-linear-gradient(90deg, #0f0e10 0 2px, #17161a 2px 3px) ;
+    }
+  }
+
+  header.topbar{
+    padding:22px 20px 14px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    border-bottom:1px solid var(--border);
+  }
+  header.topbar h1{
+    font-family:var(--font-display);
+    font-size:19px;
+    font-weight:700;
+    letter-spacing:0.5px;
+    margin:0;
+  }
+  header.topbar .date-eyebrow{
+    font-size:11px;
+    color:var(--text-dim);
+    letter-spacing:0.5px;
+  }
+
+  /* ---- account switcher ---- */
+  .acct-switch{ display:flex; gap:8px; padding:12px 20px 0; }
+  .acct-switch button{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+    padding:9px 8px; border-radius:9px; border:1px solid var(--border);
+    background:var(--surface); color:var(--text-dim); font-family:var(--font-body);
+    font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .acct-switch button.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  section.view{display:none; padding:20px; animation:fadein .18s ease;}
+  section.view.active{display:block;}
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ---- Dashboard ---- */
+  .stamp-wrap{ display:flex; justify-content:center; margin:18px 0 8px; }
+  .stamp{
+    width:180px; height:180px; border-radius:50%;
+    border:2.5px solid var(--accent);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .stamp::before{
+    content:''; position:absolute; inset:8px; border:1px solid var(--accent-dim); border-radius:50%; opacity:.6;
+  }
+  .stamp .label{ font-size:10px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:4px;}
+  .stamp .amount{ font-family:var(--font-num); font-size:24px; font-weight:700; color:var(--text); }
+  .stamp .sub{ font-size:10px; color:var(--text-dim); margin-top:4px;}
+
+  .pool-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:18px 0; }
+  .pool-card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .pool-card .k{ font-size:11px; color:var(--text-dim); letter-spacing:.4px;}
+  .pool-card .v{ font-family:var(--font-num); font-size:16px; font-weight:700; margin-top:4px;}
+
+  .section-title{ font-family:var(--font-display); font-size:14px; letter-spacing:.5px; color:var(--text-dim); margin:22px 0 10px; display:flex; align-items:center; gap:8px;}
+  .section-title::after{ content:''; flex:1; height:1px; background:var(--border);}
+
+  .cat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .cat-cell{ background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 12px;}
+  .cat-cell .k{ font-size:11px; color:var(--text-dim);}
+  .cat-cell .v{ font-family:var(--font-num); font-size:15px; font-weight:700; margin-top:2px;}
+
+  .total-row{ display:flex; justify-content:space-between; align-items:center; background:var(--surface2); border-radius:8px; padding:12px 14px; margin-top:10px; border:1px solid var(--border);}
+  .total-row .k{ font-size:12px; color:var(--text-dim);}
+  .total-row .v{ font-family:var(--font-num); font-size:16px; font-weight:700; color:var(--accent);}
+
+  .budget-card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:10px;}
+  .budget-card .head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .budget-card .head .name{ font-size:13px; font-weight:600;}
+  .budget-card .head .figures{ font-family:var(--font-num); font-size:12px; color:var(--text-dim);}
+  .budget-row{ margin-bottom:8px; }
+  .budget-row:last-child{ margin-bottom:0; }
+  .budget-row .row-label{ display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); margin-bottom:4px;}
+  .bar-track{ height:7px; border-radius:4px; background:var(--surface2); overflow:hidden; border:1px solid var(--border);}
+  .bar-fill{ height:100%; background:var(--positive); border-radius:4px; transition:width .3s ease;}
+  .bar-fill.warn{ background:#d9a35c; }
+  .bar-fill.over{ background:var(--accent); }
+
+  /* ---- shared form elements ---- */
+  label.field{ display:block; margin-bottom:14px; }
+  label.field .lbl{ display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; letter-spacing:.3px;}
+  input[type=text], input[type=number], input[type=date], input[type=password], select, textarea{
+    width:100%; background:var(--surface); border:1px solid var(--border); color:var(--text);
+    padding:11px 12px; border-radius:8px; font-family:var(--font-body); font-size:15px;
+  }
+  input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .seg{ display:flex; gap:6px; flex-wrap:wrap; }
+  .seg button{ flex:1; min-width:70px; padding:10px 8px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font-family:var(--font-body); font-size:13px; cursor:pointer;}
+  .seg button.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px; border-radius:9px; border:1px solid var(--accent); background:var(--accent); color:#fff; font-family:var(--font-body); font-weight:600; font-size:14px; cursor:pointer;}
+  .btn.secondary{ background:transparent; color:var(--text); border-color:var(--border); }
+  .btn.ghost{ background:transparent; color:var(--accent); border-color:transparent; padding:8px; font-size:13px;}
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px;}
+
+  /* ---- bottom nav ---- */
+  nav.tabbar{
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:480px; background:var(--surface); border-top:1px solid var(--border);
+    display:flex; padding-bottom:var(--safe-bottom); z-index:20;
+  }
+  nav.tabbar button{
+    flex:1; background:none; border:none; color:var(--text-dim); padding:10px 0 8px; font-family:var(--font-body); font-size:10px;
+    display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;
+  }
+  nav.tabbar button.active{ color:var(--accent); }
+  nav.tabbar svg{ width:20px; height:20px; }
+
+  /* ---- history list ---- */
+  .txn{ display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border);}
+  .txn:last-child{ border-bottom:none; }
+  .txn .left .cat{ font-size:13px; font-weight:600; }
+  .txn .left .meta{ font-size:11px; color:var(--text-dim); margin-top:2px;}
+  .txn .right{ text-align:right; }
+  .txn .right .amt{ font-family:var(--font-num); font-weight:700; font-size:14px;}
+  .txn .right .amt.income{ color:var(--positive); }
+  .txn .right .amt.expense{ color:var(--text); }
+  .month-group-label{ font-size:12px; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; margin:18px 0 6px;}
+
+  .filter-row{ display:flex; gap:8px; margin-bottom:14px; }
+
+  /* ---- projection table ---- */
+  table.proj{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.proj th{ text-align:left; color:var(--text-dim); font-weight:500; padding:6px 4px; border-bottom:1px solid var(--border); font-size:11px;}
+  table.proj td{ padding:7px 4px; border-bottom:1px solid var(--border); font-family:var(--font-num); }
+  table.proj tr.milestone td{ color:var(--accent); font-weight:700; }
+  table.proj td.neg{ color:#d98a80; }
+
+  .helptext{ font-size:11.5px; color:var(--text-dim); line-height:1.5; margin-top:4px;}
+  .toast{
+    position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--surface2);
+    border:1px solid var(--accent); color:var(--text); padding:10px 18px; border-radius:20px; font-size:13px;
+    z-index:50; opacity:0; transition:opacity .25s; pointer-events:none; max-width:85%; text-align:center;
+  }
+  .toast.show{ opacity:1; }
+
+  .overlay{ position:fixed; inset:0; background:rgba(15,14,16,.85); z-index:40; display:flex; align-items:flex-end; justify-content:center;}
+  .overlay .sheet{ background:var(--bg); width:100%; max-width:480px; max-height:92vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:22px 20px calc(24px + var(--safe-bottom)); border:1px solid var(--border); border-bottom:none;}
+  .sheet h2{ font-family:var(--font-display); font-size:18px; margin:0 0 4px;}
+  .sheet .sub{ font-size:12px; color:var(--text-dim); margin-bottom:18px;}
+
+  .row-between{ display:flex; justify-content:space-between; align-items:center; }
+  .icon-btn{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:16px; padding:4px 6px;}
+  .icon-btn:hover{ color:var(--accent); }
+
+  ::-webkit-scrollbar{ width:0; height:0; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div>
+      <h1 id="viewTitle">Kakeibo</h1>
+      <div class="date-eyebrow" id="dateEyebrow"></div>
+    </div>
+    <button class="icon-btn" onclick="showView('settings')" aria-label="Settings">⚙</button>
+  </header>
+
+  <div class="acct-switch" id="acctSwitch">
+    <button data-acct="jp" onclick="setActiveAccount('jp')">🇯🇵 Japan</button>
+    <button data-acct="lk" onclick="setActiveAccount('lk')">🇱🇰 Sri Lanka</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <section class="view" id="view-dashboard">
+    <div class="stamp-wrap">
+      <div class="stamp">
+        <div class="label">Available</div>
+        <div class="amount" id="dashTotal">0</div>
+        <div class="sub" id="dashMonthLabel">—</div>
+      </div>
+    </div>
+
+    <div class="pool-grid" id="dashPoolGrid"></div>
+
+    <div class="section-title">This month by category</div>
+    <div class="cat-grid" id="dashCatGrid"></div>
+    <div class="total-row"><div class="k">Monthly expenses total</div><div class="v" id="dashMonthExpense">0</div></div>
+
+    <div class="section-title" id="foodBudgetTitle" style="display:none;">Food allowance</div>
+    <div id="foodBudgetWrap"></div>
+
+    <div class="section-title">Quick actions</div>
+    <div style="display:flex; gap:8px; margin-top:6px;">
+      <button class="btn" onclick="openAddSheet()">+ Add expense</button>
+      <button class="btn secondary" onclick="showView('income')">Income</button>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button class="btn secondary" onclick="showView('transfer')">Move money between pools</button>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="view-history">
+    <div class="filter-row">
+      <select id="filterMonth" onchange="renderHistory()"></select>
+      <select id="filterCategory" onchange="renderHistory()"></select>
+    </div>
+    <div id="historyList"></div>
+  </section>
+
+  <!-- INCOME -->
+  <section class="view" id="view-income">
+    <div class="section-title" style="margin-top:0;">One-off income</div>
+    <button class="btn secondary" onclick="openIncomeSheet()">+ Add one-off income</button>
+    <div id="incomeList" style="margin-top:14px;"></div>
+  </section>
+
+  <!-- PROJECTION -->
+  <section class="view" id="view-projection">
+    <div class="card">
+      <label class="field" style="margin-bottom:10px;">
+        <span class="lbl">Projection end date</span>
+        <input type="date" id="projEnd" onchange="saveProjSettings()">
+      </label>
+      <label class="field" style="margin-bottom:0;">
+        <span class="lbl" id="projSpendLbl">Estimated future monthly spend</span>
+        <input type="number" id="projSpend" onchange="saveProjSettings()">
+        <div class="helptext" id="projSpendHint"></div>
+      </label>
+    </div>
+    <div class="section-title">Month-by-month balance</div>
+    <div style="overflow-x:auto;">
+      <table class="proj" id="projTable"></table>
+    </div>
+    <p class="helptext">Projection assumes your balance declines by the estimated future monthly spend above through the end date. Any one-off income you log will still be reflected once it's actually recorded. Past months use your actual recorded totals.</p>
+  </section>
+
+  <!-- TRANSFER -->
+  <section class="view" id="view-transfer">
+    <div class="card">
+      <div class="section-title" style="margin-top:0;">Move money between pools</div>
+      <label class="field">
+        <span class="lbl">From</span>
+        <select id="transferFrom" onchange="onTransferPoolChange()"></select>
+      </label>
+      <label class="field">
+        <span class="lbl">To</span>
+        <select id="transferTo" onchange="onTransferPoolChange()"></select>
+      </label>
+      <label class="field">
+        <span class="lbl">Amount</span>
+        <input type="number" id="transferAmt" min="0">
+      </label>
+      <label class="field">
+        <span class="lbl">Date</span>
+        <input type="date" id="transferDate">
+      </label>
+      <label class="field">
+        <span class="lbl">Note (optional)</span>
+        <input type="text" id="transferNote" placeholder="e.g. friend's name, ATM withdrawal">
+      </label>
+      <button class="btn" onclick="submitTransfer()">Record transfer</button>
+      <p class="helptext" id="transferHint"></p>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings">
+    <div class="card">
+      <div class="section-title" style="margin-top:0;">Google Sheets sync</div>
+      <label class="field">
+        <span class="lbl">Web App URL</span>
+        <input type="text" id="setSheetUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      </label>
+      <label class="field" style="margin-bottom:10px;">
+        <span class="lbl">Shared secret</span>
+        <input type="password" id="setSheetSecret" placeholder="match the SECRET in your script">
+      </label>
+      <button class="btn secondary" onclick="saveSheetSettings()">Save connection</button>
+      <div style="height:8px;"></div>
+      <button class="btn" onclick="syncNow()" id="syncBtn">⇅ Sync now</button>
+      <p class="helptext" id="syncStatus">Not connected yet.</p>
+      <p class="helptext">Set up once: create a Google Sheet, paste the provided Apps Script into it, deploy as a Web App, and put that URL + your chosen secret here. Full steps are in SYNC_SETUP.md in your download. Both devices point at the same Sheet to stay in sync. Both Japan and Sri Lanka accounts sync through the same Sheet, on separate tabs.</p>
+    </div>
+
+    <div class="card" id="foodBudgetSettingsCard">
+      <div class="section-title" style="margin-top:0;">Food budgets</div>
+      <label class="field">
+        <span class="lbl">Card Food — monthly limit</span>
+        <input type="number" id="setBudgetCardFood" min="0" placeholder="0 = no limit set">
+      </label>
+      <label class="field" style="margin-bottom:10px;">
+        <span class="lbl">Cash Food — monthly limit</span>
+        <input type="number" id="setBudgetCashFood" min="0" placeholder="0 = no limit set">
+      </label>
+      <button class="btn secondary" onclick="saveBudgetSettings()">Save budgets</button>
+      <p class="helptext">Each limit is automatically split into a weekly allowance (monthly ÷ number of weeks in the current month) and shown on the dashboard with a progress bar for this week and this month. Leave a limit at 0 to hide it.</p>
+    </div>
+
+    <div class="card" id="bankNamesCard" style="display:none;">
+      <div class="section-title" style="margin-top:0;">Bank account names</div>
+      <div id="bankNamesWrap"></div>
+      <button class="btn secondary" onclick="saveBankNames()">Save names</button>
+      <p class="helptext">Rename your Sri Lanka bank accounts so history and balances are easy to tell apart.</p>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-top:0;">Starting balances — <span id="balAcctLabel"></span></div>
+      <div id="startingBalancesWrap"></div>
+      <button class="btn secondary" onclick="saveStartingBalances()">Save balances</button>
+      <p class="helptext">Only adjust this if your true current totals drift from what the ledger shows — e.g. after reconciling with your bank app. This includes the cash lent to others / investments / deposits pools.</p>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-top:0;">Backup</div>
+      <button class="btn secondary" onclick="exportData()">Export backup (.json)</button>
+      <div style="height:8px;"></div>
+      <label class="btn secondary" style="display:flex;">
+        Import backup
+        <input type="file" accept="application/json" style="display:none;" onchange="importData(event)">
+      </label>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-top:0; color:var(--accent);">Danger zone</div>
+      <button class="btn secondary" style="border-color:var(--accent); color:var(--accent);" onclick="resetAll()">Reset all data</button>
+    </div>
+  </section>
+
+  <nav class="tabbar">
+    <button data-view="dashboard" class="active" onclick="showView('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Ledger
+    </button>
+    <button data-view="history" onclick="showView('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      History
+    </button>
+    <button data-view="add-center" onclick="openAddSheet()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+      Add
+    </button>
+    <button data-view="income" onclick="showView('income')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M17 6H10a3 3 0 000 6h4a3 3 0 010 6H7"/></svg>
+      Income
+    </button>
+    <button data-view="projection" onclick="showView('projection')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M11 19V5M18 19v-7"/></svg>
+      Forecast
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------------------------------------------------------
+   ACCOUNT DEFINITIONS
+   Two accounts: Japan (jp) and Sri Lanka (lk). Each has its own
+   pools (cash/bank/etc.), expense categories, currency, and its
+   own recurring-income / budget / projection settings.
+--------------------------------------------------------------- */
+const BANK_NAME_OPTIONS = ['Sampath Bank','Bank of Ceylon','Commercial Bank','Nations Trust Bank','Dialog Genie'];
+
+const ACCOUNT_DEFS = {
+  jp: {
+    label:'Japan', flag:'🇯🇵', currency:'¥',
+    pools:[
+      {key:'hand', label:'Cash in hand'},
+      {key:'bank', label:'Bank'},
+      {key:'investments', label:'Investments'},
+      {key:'deposits', label:'Fixed Deposits'},
+      {key:'lent', label:'Cash Lent to others'}
+    ],
+    // Each card is linked to the bank it draws from. Picking a card when
+    // logging a "Card" expense both tags the transaction with that card
+    // AND reduces the linked bank pool — no separate step needed.
+    cards:[
+      {key:'paypayCard', label:'PayPay Card', poolKey:'bank'},
+      {key:'rakutenCard', label:'Rakuten Card', poolKey:'bank'},
+      {key:'jppostDebitCard', label:'JP Post Debit Card', poolKey:'bank'}
+    ],
+    expenseCategories:['Card Food','Card Other','Cash Food','Cash Other','Bills','Transportation'],
+    hasCardCashSplit:true,
+    hasFoodBudget:true,
+    cashPoolKey:'hand',
+    bankPoolKey:'bank'
+  },
+  lk: {
+    label:'Sri Lanka', flag:'🇱🇰', currency:'Rs',
+    pools:[
+      {key:'cash', label:'Cash in hand'},
+      {key:'bank', label:'Bank', bankNameKey:'bank', bankNameOptions:BANK_NAME_OPTIONS},
+      {key:'investments', label:'Investments'},
+      {key:'deposits', label:'Deposits'},
+      {key:'lent', label:'Cash Lent to others'}
+    ],
+    expenseCategories:['Card Food','Card Other','Cash Food','Cash Other','Bills','Transportation'],
+    hasCardCashSplit:true,
+    hasFoodBudget:true,
+    cashPoolKey:'cash',
+    bankPoolKey:'bank'
+  }
+};
+function poolLabel(acctKey, poolKey){
+  const def = ACCOUNT_DEFS[acctKey];
+  const p = def.pools.find(x=>x.key===poolKey);
+  if(!p) return poolKey;
+  if(p.bankNameKey){
+    const custom = state.accounts[acctKey].bankNames && state.accounts[acctKey].bankNames[p.bankNameKey];
+    return custom || p.label;
+  }
+  return p.label;
+}
+function cardLabel(acctKey, cardKey){
+  if(!cardKey) return '';
+  const def = ACCOUNT_DEFS[acctKey];
+  const c = def.cards && def.cards.find(x=>x.key===cardKey);
+  return c ? c.label : cardKey;
+}
+
+/* ---------------------------------------------------------------
+   STATE
+--------------------------------------------------------------- */
+const STORAGE_KEY = 'kakeibo_v2';
+const OLD_STORAGE_KEY = 'kakeibo_v1';
+function pad2(n){ return String(n).padStart(2,'0'); }
+function nowDate(){ return new Date(); } // always freshly computed — never cached
+function todayISO(){
+  const d = nowDate();
+  return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); // local date, not UTC
+}
+
+function defaultAccountState(key){
+  return {
+    pools: Object.fromEntries(ACCOUNT_DEFS[key].pools.map(p=>[p.key,0])),
+    bankNames: {},
+    projectionEnd:'2027-12-31',
+    projectedSpend: key==='jp' ? 100000 : 0,
+    budgetCardFood:0,
+    budgetCashFood:0
+  };
+}
+function defaultState(){
+  return {
+    setupDone:false,
+    activeAccount:'jp',
+    accounts:{ jp: defaultAccountState('jp'), lk: defaultAccountState('lk') },
+    sheetUrl:'',
+    sheetSecret:'',
+    lastSynced:null,
+    accountsUpdatedAt: 0,
+    transactions:[] // {id,account,type:'expense'|'income'|'transfer',date,category,pool,poolFrom,poolTo,amount,note,oneOff,deleted,updatedAt}
+  };
+}
+
+let state = load();
+
+function migrateOldState(oldRaw){
+  // Migrates the old single-account (Japan-only) v1 format into v2.
+  let old;
+  try{ old = JSON.parse(oldRaw); }catch(e){ return null; }
+  const s = defaultState();
+  s.setupDone = !!old.setupDone;
+  s.sheetUrl = old.sheetUrl || '';
+  s.sheetSecret = old.sheetSecret || '';
+  s.lastSynced = old.lastSynced || null;
+  s.accounts.jp.pools.hand = old.cashInHand || 0;
+  s.accounts.jp.pools.bank = old.cashAtBank || 0;
+  s.accounts.jp.projectionEnd = old.projectionEnd || '2027-12-31';
+  s.accounts.jp.projectedSpend = old.projectedSpend || 0;
+  s.accounts.jp.budgetCardFood = old.budgetCardFood || 0;
+  s.accounts.jp.budgetCashFood = old.budgetCashFood || 0;
+  s.accountsUpdatedAt = Date.now();
+  s.transactions = (old.transactions||[]).map(t=>{
+    const nt = { id:t.id, account:'jp', type:t.type, date:t.date, amount:t.amount, note:t.note,
+      oneOff:t.oneOff, deleted:t.deleted, updatedAt:t.updatedAt };
+    if(t.type==='expense'){
+      nt.category = t.category;
+      nt.pool = t.method==='cash' ? 'hand' : 'bank';
+    } else if(t.type==='income'){
+      nt.pool = t.pool || 'bank';
+    } else if(t.type==='transfer'){
+      if(t.dir==='bank-to-hand'){ nt.poolFrom='bank'; nt.poolTo='hand'; }
+      else { nt.poolFrom='hand'; nt.poolTo='bank'; }
+    }
+    return nt;
+  });
+  return s;
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      const merged = Object.assign(defaultState(), parsed);
+      merged.accounts = Object.assign({jp:defaultAccountState('jp'), lk:defaultAccountState('lk')}, parsed.accounts||{});
+      merged.accounts.jp = Object.assign(defaultAccountState('jp'), merged.accounts.jp||{});
+      merged.accounts.lk = Object.assign(defaultAccountState('lk'), merged.accounts.lk||{});
+      const lkChanged = migrateLkBankPools_(merged);
+      const jpChanged = migrateJpBankPool_(merged);
+      if(lkChanged || jpChanged){ merged.accountsUpdatedAt = Date.now(); }
+      return merged;
+    }
+    const oldRaw = localStorage.getItem(OLD_STORAGE_KEY);
+    if(oldRaw){
+      const migrated = migrateOldState(oldRaw);
+      if(migrated) return migrated;
+    }
+    return defaultState();
+  }catch(e){ return defaultState(); }
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+// One-time migration for existing installs: Japan used to have three
+// separate bank pools (jppost/rakuten/paypay); combine their balances into
+// the new single 'bank' pool and repoint any transactions that referenced them.
+function migrateJpBankPool_(s){
+  const acct = s.accounts && s.accounts.jp;
+  if(!acct || !acct.pools) return false;
+  const p = acct.pools;
+  if(!('jppost' in p) && !('rakuten' in p) && !('paypay' in p)) return false;
+  p.bank = (Number(p.bank)||0) + (Number(p.jppost)||0) + (Number(p.rakuten)||0) + (Number(p.paypay)||0);
+  delete p.jppost; delete p.rakuten; delete p.paypay;
+  (s.transactions||[]).forEach(function(t){
+    if(t.account!=='jp') return;
+    ['pool','poolFrom','poolTo'].forEach(function(f){
+      if(t[f]==='jppost' || t[f]==='rakuten' || t[f]==='paypay') t[f]='bank';
+    });
+  });
+  return true;
+}
+
+// One-time migration for existing installs: Sri Lanka used to have three
+// separate bank pools (bank1/bank2/bank3); combine their balances into the
+// new single 'bank' pool and repoint any transactions that referenced them.
+function migrateLkBankPools_(s){
+  const acct = s.accounts && s.accounts.lk;
+  if(!acct || !acct.pools) return false;
+  const p = acct.pools;
+  if(!('bank1' in p) && !('bank2' in p) && !('bank3' in p)) return false;
+  p.bank = (Number(p.bank)||0) + (Number(p.bank1)||0) + (Number(p.bank2)||0) + (Number(p.bank3)||0);
+  delete p.bank1; delete p.bank2; delete p.bank3;
+  (s.transactions||[]).forEach(function(t){
+    if(t.account!=='lk') return;
+    ['pool','poolFrom','poolTo'].forEach(function(f){
+      if(t[f]==='bank1' || t[f]==='bank2' || t[f]==='bank3') t[f]='bank';
+    });
+  });
+  if(acct.bankNames){ delete acct.bankNames.bank1; delete acct.bankNames.bank2; delete acct.bankNames.bank3; }
+  return true;
+}
+
+/* ---------------------------------------------------------------
+   HELPERS
+--------------------------------------------------------------- */
+function curDef(){ return ACCOUNT_DEFS[state.activeAccount]; }
+function curAcctState(){ return state.accounts[state.activeAccount]; }
+function fmtMoney(n){
+  n = Math.round(n||0);
+  const sign = n<0 ? '-' : '';
+  return sign + curDef().currency + Math.abs(n).toLocaleString('en-US');
+}
+function fmtMoneyFor(acctKey, n){
+  n = Math.round(n||0);
+  const sign = n<0 ? '-' : '';
+  return sign + ACCOUNT_DEFS[acctKey].currency + Math.abs(n).toLocaleString('en-US');
+}
+function ym(dateStr){ return dateStr.slice(0,7); } // YYYY-MM
+function monthLabel(ymStr){
+  const [y,m] = ymStr.split('-');
+  const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return names[parseInt(m,10)-1]+' '+y;
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------------------------------------------------------
+   ACCOUNT SWITCHING
+--------------------------------------------------------------- */
+function setActiveAccount(key){
+  state.activeAccount = key;
+  save();
+  document.querySelectorAll('#acctSwitch button').forEach(b=>b.classList.toggle('active', b.dataset.acct===key));
+  const activeView = document.querySelector('section.view.active');
+  if(activeView) showView(activeView.id.replace('view-',''));
+}
+
+/* ---------------------------------------------------------------
+   DERIVED TOTALS
+--------------------------------------------------------------- */
+function liveTransactions(acctKey){
+  acctKey = acctKey || state.activeAccount;
+  return state.transactions.filter(t=>!t.deleted && t.account===acctKey);
+}
+
+function computePools(acctKey){
+  acctKey = acctKey || state.activeAccount;
+  const def = ACCOUNT_DEFS[acctKey];
+  const pools = Object.assign({}, state.accounts[acctKey].pools);
+  for(const t of liveTransactions(acctKey)){
+    if(t.type==='expense'){
+      pools[t.pool] = (pools[t.pool]||0) - t.amount;
+    } else if(t.type==='income'){
+      pools[t.pool] = (pools[t.pool]||0) + t.amount;
+    } else if(t.type==='transfer'){
+      pools[t.poolFrom] = (pools[t.poolFrom]||0) - t.amount;
+      pools[t.poolTo] = (pools[t.poolTo]||0) + t.amount;
+    }
+  }
+  const total = def.pools.reduce((s,p)=> s + (pools[p.key]||0), 0);
+  return {pools, total};
+}
+
+function monthCategoryTotals(ymStr, acctKey){
+  acctKey = acctKey || state.activeAccount;
+  const cats = {};
+  ACCOUNT_DEFS[acctKey].expenseCategories.forEach(c=>cats[c]=0);
+  let total = 0;
+  for(const t of liveTransactions(acctKey)){
+    if(t.type==='expense' && ym(t.date)===ymStr){
+      cats[t.category] = (cats[t.category]||0) + t.amount;
+      total += t.amount;
+    }
+  }
+  return {cats, total};
+}
+
+function computeBudgetStatus(category){
+  const acct = curAcctState();
+  const limit = category==='Card Food' ? acct.budgetCardFood : acct.budgetCashFood;
+  if(!limit || limit<=0) return null;
+
+  const d = new Date(todayISO()+'T00:00:00');
+  const y = d.getFullYear(), m = d.getMonth();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const weeksInMonth = Math.ceil(daysInMonth/7);
+  const weeklyLimit = limit/weeksInMonth;
+  const todayDay = d.getDate();
+  const weekIndex = Math.floor((todayDay-1)/7);
+  const curYm = todayISO().slice(0,7);
+
+  let monthSpent=0, weekSpent=0;
+  for(const t of liveTransactions()){
+    if(t.type==='expense' && t.category===category && ym(t.date)===curYm){
+      monthSpent += t.amount;
+      const day = parseInt(t.date.slice(8,10),10);
+      const wi = Math.floor((day-1)/7);
+      if(wi===weekIndex) weekSpent += t.amount;
+    }
+  }
+  return {limit, weeklyLimit, monthSpent, weekSpent, weeksInMonth, weekNumber: weekIndex+1};
+}
+
+function budgetBarHtml(spent, limit){
+  const pct = limit>0 ? Math.min(100, (spent/limit)*100) : 0;
+  const overPct = limit>0 ? (spent/limit)*100 : 0;
+  const cls = overPct >= 100 ? 'over' : (overPct >= 80 ? 'warn' : '');
+  return `<div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>`;
+}
+
+function renderFoodBudgets(){
+  const wrap = document.getElementById('foodBudgetWrap');
+  const title = document.getElementById('foodBudgetTitle');
+  if(!curDef().hasFoodBudget){
+    title.style.display = 'none';
+    wrap.innerHTML = '';
+    return;
+  }
+  const cardStatus = computeBudgetStatus('Card Food');
+  const cashStatus = computeBudgetStatus('Cash Food');
+
+  if(!cardStatus && !cashStatus){
+    title.style.display = 'none';
+    wrap.innerHTML = '';
+    return;
+  }
+  title.style.display = 'flex';
+
+  function cardHtml(name, s){
+    if(!s) return '';
+    return `
+      <div class="budget-card">
+        <div class="head"><div class="name">${name}</div><div class="figures">week ${s.weekNumber} of ${s.weeksInMonth}</div></div>
+        <div class="budget-row">
+          <div class="row-label"><span>This week</span><span>${fmtMoney(s.weekSpent)} / ${fmtMoney(s.weeklyLimit)}</span></div>
+          ${budgetBarHtml(s.weekSpent, s.weeklyLimit)}
+        </div>
+        <div class="budget-row">
+          <div class="row-label"><span>This month</span><span>${fmtMoney(s.monthSpent)} / ${fmtMoney(s.limit)}</span></div>
+          ${budgetBarHtml(s.monthSpent, s.limit)}
+        </div>
+      </div>
+    `;
+  }
+  wrap.innerHTML = cardHtml('Card Food', cardStatus) + cardHtml('Cash Food', cashStatus);
+}
+
+/* ---------------------------------------------------------------
+   ROUTING
+--------------------------------------------------------------- */
+const titles = {dashboard:'Kakeibo', history:'History', income:'Income', projection:'Forecast', transfer:'Transfer', settings:'Settings'};
+function showView(name){
+  document.querySelectorAll('section.view').forEach(s=>s.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('nav.tabbar button').forEach(b=>b.classList.remove('active'));
+  const navBtn = document.querySelector(`nav.tabbar button[data-view="${name}"]`);
+  if(navBtn) navBtn.classList.add('active');
+  document.getElementById('viewTitle').textContent = (curDef().flag+' '+titles[name]) || 'Kakeibo';
+  document.querySelectorAll('#acctSwitch button').forEach(b=>b.classList.toggle('active', b.dataset.acct===state.activeAccount));
+  if(name==='dashboard') renderDashboard();
+  if(name==='history') renderHistory();
+  if(name==='income') renderIncome();
+  if(name==='projection') renderProjection();
+  if(name==='transfer') renderTransfer();
+  if(name==='settings') renderSettings();
+}
+
+/* ---------------------------------------------------------------
+   DASHBOARD
+--------------------------------------------------------------- */
+function renderDashboard(){
+  const {pools, total} = computePools();
+  document.getElementById('dashTotal').textContent = fmtMoney(total);
+  const curYm = todayISO().slice(0,7);
+  document.getElementById('dashMonthLabel').textContent = 'as of ' + monthLabel(curYm);
+
+  const grid = document.getElementById('dashPoolGrid');
+  grid.innerHTML = curDef().pools.map(p=>`
+    <div class="pool-card"><div class="k">${poolLabel(state.activeAccount, p.key)}</div><div class="v">${fmtMoney(pools[p.key]||0)}</div></div>
+  `).join('');
+
+  const {cats, total: monthTotal} = monthCategoryTotals(curYm);
+  const catGrid = document.getElementById('dashCatGrid');
+  catGrid.innerHTML = Object.entries(cats).map(([k,v])=>`
+    <div class="cat-cell"><div class="k">${k}</div><div class="v">${fmtMoney(v)}</div></div>
+  `).join('');
+  document.getElementById('dashMonthExpense').textContent = fmtMoney(monthTotal);
+  document.getElementById('dateEyebrow').textContent = nowDate().toDateString();
+  renderFoodBudgets();
+}
+
+/* ---------------------------------------------------------------
+   ADD EXPENSE SHEET
+--------------------------------------------------------------- */
+let addState = { category:'', pool:'', cardTag:'', method:'' };
+
+function openAddSheet(){
+  const def = curDef();
+  addState = { category: def.expenseCategories[0], pool: def.pools[0].key, cardTag:'', method:'' };
+  const overlay = document.createElement('div');
+  overlay.className='overlay';
+  overlay.id='addOverlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h2>Add expense — ${def.flag} ${def.label}</h2>
+      <div class="sub">Enter the details below.</div>
+
+      <label class="field">
+        <span class="lbl">Category</span>
+        <select id="addCategory" onchange="onCategoryChange()">
+          ${def.expenseCategories.map(c=>`<option>${c}</option>`).join('')}
+        </select>
+      </label>
+
+      <div id="methodPickerWrap" style="display:none;">
+        <label class="field">
+          <span class="lbl">Paid with</span>
+          <div class="seg" id="methodSeg">
+            <button data-m="cash" onclick="setAddMethod('cash')">Cash</button>
+            <button data-m="card" onclick="setAddMethod('card')">Card</button>
+          </div>
+        </label>
+      </div>
+
+      <div id="cardPickerWrap" style="display:none;">
+        <label class="field">
+          <span class="lbl">Card</span>
+          <select id="addCard" onchange="onCardChange()"></select>
+        </label>
+      </div>
+
+      <div id="poolPickerWrap" style="display:none;">
+        <label class="field">
+          <span class="lbl">Paid from</span>
+          <select id="addPool" onchange="addState.pool=this.value"></select>
+        </label>
+      </div>
+
+      <label class="field">
+        <span class="lbl">Amount</span>
+        <input type="number" id="addAmount" min="0" placeholder="0">
+      </label>
+      <label class="field">
+        <span class="lbl">Date</span>
+        <input type="date" id="addDate" value="${todayISO()}">
+      </label>
+      <label class="field">
+        <span class="lbl">Note (optional — vendor, items)</span>
+        <input type="text" id="addNote" placeholder="e.g. Lawson - lunch">
+      </label>
+
+      <div style="display:flex; gap:8px;">
+        <button class="btn secondary" onclick="closeSheet()">Cancel</button>
+        <button class="btn" onclick="submitExpense()">Save expense</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  onCategoryChange();
+}
+
+function onCategoryChange(){
+  const def = curDef();
+  const cat = document.getElementById('addCategory').value;
+  addState.category = cat;
+  if(def.hasCardCashSplit){
+    const needsPicker = (cat==='Bills' || cat==='Transportation');
+    document.getElementById('methodPickerWrap').style.display = needsPicker ? 'block' : 'none';
+    document.getElementById('poolPickerWrap').style.display = 'none';
+    if(!needsPicker){
+      setAddMethod(cat.startsWith('Card') ? 'card' : 'cash');
+    } else {
+      setAddMethod(addState.method || 'cash');
+    }
+  } else {
+    // Multi-bank accounts with no card/cash split: always ask which pool it was paid from.
+    document.getElementById('methodPickerWrap').style.display = 'none';
+    document.getElementById('cardPickerWrap').style.display = 'none';
+    document.getElementById('poolPickerWrap').style.display = 'block';
+    const sel = document.getElementById('addPool');
+    sel.innerHTML = def.pools
+      .filter(p=>p.key!=='investments' && p.key!=='deposits')
+      .map(p=>`<option value="${p.key}">${poolLabel(state.activeAccount,p.key)}</option>`).join('');
+    sel.value = addState.pool && sel.querySelector(`option[value="${addState.pool}"]`) ? addState.pool : def.pools[0].key;
+    addState.pool = sel.value;
+  }
+}
+function setAddMethod(m){
+  const def = curDef();
+  addState.method = m;
+  document.querySelectorAll('#methodSeg button').forEach(b=>b.classList.toggle('active', b.dataset.m===m));
+  const cardWrap = document.getElementById('cardPickerWrap');
+  if(m==='card' && def.cards && def.cards.length){
+    cardWrap.style.display = 'block';
+    const sel = document.getElementById('addCard');
+    sel.innerHTML = def.cards.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
+    sel.value = (addState.cardTag && def.cards.some(c=>c.key===addState.cardTag)) ? addState.cardTag : def.cards[0].key;
+    onCardChange();
+  } else {
+    cardWrap.style.display = 'none';
+    addState.cardTag = '';
+    addState.pool = (m==='card') ? def.bankPoolKey : def.cashPoolKey;
+  }
+}
+function onCardChange(){
+  const def = curDef();
+  const key = document.getElementById('addCard').value;
+  addState.cardTag = key;
+  const card = def.cards && def.cards.find(c=>c.key===key);
+  addState.pool = card ? card.poolKey : def.bankPoolKey;
+}
+
+function closeSheet(){
+  const o = document.getElementById('addOverlay');
+  if(o) o.remove();
+}
+
+function submitExpense(){
+  const amount = parseFloat(document.getElementById('addAmount').value);
+  const date = document.getElementById('addDate').value || todayISO();
+  const note = document.getElementById('addNote').value.trim();
+  const category = addState.category;
+  const pool = addState.pool;
+  if(!amount || amount<=0){ toast('Enter a valid amount.'); return; }
+
+  state.transactions.push({
+    id:uid(), account: state.activeAccount, type:'expense', date, category, pool, cardTag: addState.cardTag || '', amount, note, updatedAt: Date.now()
+  });
+  save();
+  closeSheet();
+  toast('Expense saved.');
+  showView('dashboard');
+}
+
+/* ---------------------------------------------------------------
+   INCOME
+--------------------------------------------------------------- */
+function renderIncome(){
+  const def = curDef();
+  const list = liveTransactions().filter(t=>t.type==='income' && t.oneOff).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('incomeList').innerHTML = list.length ? list.map(t=>`
+    <div class="txn">
+      <div class="left"><div class="cat">${escapeHtml(t.note)||'One-off income'}</div><div class="meta">${t.date} · ${poolLabel(state.activeAccount, t.pool)}</div></div>
+      <div class="right"><div class="amt income">+${fmtMoney(t.amount)}</div>
+        <button class="icon-btn" onclick="deleteTxn('${t.id}')">✕</button>
+      </div>
+    </div>
+  `).join('') : '<p class="helptext">No one-off income recorded yet.</p>';
+}
+function openIncomeSheet(){
+  const def = curDef();
+  const overlay = document.createElement('div');
+  overlay.className='overlay'; overlay.id='incOverlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h2>One-off income — ${def.flag} ${def.label}</h2>
+      <div class="sub">Bonus, refund, side gig, etc.</div>
+      <label class="field"><span class="lbl">Amount (${def.currency})</span><input type="number" id="incAmt" min="0"></label>
+      <label class="field"><span class="lbl">Date</span><input type="date" id="incDate" value="${todayISO()}"></label>
+      <label class="field"><span class="lbl">Goes to</span>
+        <select id="incPoolSel"></select>
+      </label>
+      <label class="field"><span class="lbl">Note</span><input type="text" id="incNote" placeholder="e.g. Bonus"></label>
+      <div style="display:flex; gap:8px;">
+        <button class="btn secondary" onclick="closeIncOverlay()">Cancel</button>
+        <button class="btn" onclick="submitOneOffIncome()">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const sel = document.getElementById('incPoolSel');
+  sel.innerHTML = def.pools
+    .filter(p=>p.key!=='lent' && p.key!=='investments' && p.key!=='deposits')
+    .map(p=>`<option value="${p.key}">${poolLabel(state.activeAccount,p.key)}</option>`).join('');
+  window._incPool = sel.value;
+  sel.onchange = ()=>{ window._incPool = sel.value; };
+}
+function closeIncOverlay(){ const o=document.getElementById('incOverlay'); if(o) o.remove(); }
+function submitOneOffIncome(){
+  const amount = parseFloat(document.getElementById('incAmt').value);
+  const date = document.getElementById('incDate').value || todayISO();
+  const note = document.getElementById('incNote').value.trim();
+  if(!amount || amount<=0){ toast('Enter a valid amount.'); return; }
+  state.transactions.push({id:uid(), account: state.activeAccount, type:'income', date, amount, note, pool: window._incPool, oneOff:true, updatedAt: Date.now()});
+  save();
+  closeIncOverlay();
+  toast('Income recorded.');
+  renderIncome();
+}
+
+/* ---------------------------------------------------------------
+   HISTORY
+--------------------------------------------------------------- */
+function populateFilters(){
+  const months = new Set(liveTransactions().map(t=>ym(t.date)));
+  months.add(todayISO().slice(0,7));
+  const sorted = [...months].sort().reverse();
+  const sel = document.getElementById('filterMonth');
+  const prevMonth = sel.value;
+  sel.innerHTML = `<option value="all">All time</option>` + sorted.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
+  if(prevMonth && [...sel.options].some(o=>o.value===prevMonth)) sel.value = prevMonth;
+
+  const catSel = document.getElementById('filterCategory');
+  const prevCat = catSel.value;
+  const opts = ['<option value="all">All categories</option>']
+    .concat(curDef().expenseCategories.map(c=>`<option value="${c}">${c}</option>`))
+    .concat(['<option value="income">Income</option>','<option value="transfer">Transfers</option>']);
+  catSel.innerHTML = opts.join('');
+  if(prevCat && [...catSel.options].some(o=>o.value===prevCat)) catSel.value = prevCat;
+}
+function renderHistory(){
+  populateFilters();
+  const monthF = document.getElementById('filterMonth').value || 'all';
+  const catF = document.getElementById('filterCategory').value || 'all';
+  let items = [...liveTransactions()].sort((a,b)=>b.date.localeCompare(a.date));
+  if(monthF!=='all') items = items.filter(t=>ym(t.date)===monthF);
+  if(catF!=='all'){
+    if(catF==='income') items = items.filter(t=>t.type==='income');
+    else if(catF==='transfer') items = items.filter(t=>t.type==='transfer');
+    else items = items.filter(t=>t.category===catF);
+  }
+  const list = document.getElementById('historyList');
+  if(!items.length){ list.innerHTML='<p class="helptext">No transactions for this filter.</p>'; return; }
+
+  let lastMonth = null, html='';
+  for(const t of items){
+    const m = ym(t.date);
+    if(m!==lastMonth){ html += `<div class="month-group-label">${monthLabel(m)}</div>`; lastMonth=m; }
+    if(t.type==='expense'){
+      html += `<div class="txn"><div class="left"><div class="cat">${escapeHtml(t.category)}</div><div class="meta">${t.date} · ${poolLabel(state.activeAccount,t.pool)}${t.cardTag? ' ('+escapeHtml(cardLabel(state.activeAccount,t.cardTag))+')':''}${t.note? ' · '+escapeHtml(t.note):''}</div></div>
+        <div class="right"><div class="amt expense">-${fmtMoney(t.amount)}</div><button class="icon-btn" onclick="deleteTxn('${t.id}')">✕</button></div></div>`;
+    } else if(t.type==='income'){
+      html += `<div class="txn"><div class="left"><div class="cat">${escapeHtml(t.oneOff? (t.note||'One-off income') : 'Income')}</div><div class="meta">${t.date} · ${poolLabel(state.activeAccount,t.pool)}</div></div>
+        <div class="right"><div class="amt income">+${fmtMoney(t.amount)}</div><button class="icon-btn" onclick="deleteTxn('${t.id}')">✕</button></div></div>`;
+    } else if(t.type==='transfer'){
+      html += `<div class="txn"><div class="left"><div class="cat">Transfer ${poolLabel(state.activeAccount,t.poolFrom)} → ${poolLabel(state.activeAccount,t.poolTo)}</div><div class="meta">${t.date}${t.note? ' · '+escapeHtml(t.note):''}</div></div>
+        <div class="right"><div class="amt">${fmtMoney(t.amount)}</div><button class="icon-btn" onclick="deleteTxn('${t.id}')">✕</button></div></div>`;
+    }
+  }
+  list.innerHTML = html;
+}
+function deleteTxn(id){
+  if(!confirm('Delete this entry?')) return;
+  const t = state.transactions.find(x=>x.id===id);
+  if(t){ t.deleted = true; t.updatedAt = Date.now(); }
+  save();
+  renderHistory(); renderDashboard(); renderIncome();
+}
+
+/* ---------------------------------------------------------------
+   TRANSFER
+   Generic "move money between pools" — used for Bank⇄Hand,
+   lending to / repayment from friends (either account's "lent" pool),
+   and investments / deposits contributions & withdrawals (either account).
+--------------------------------------------------------------- */
+function renderTransfer(){
+  const def = curDef();
+  document.getElementById('transferDate').value = todayISO();
+  document.getElementById('transferAmt').value='';
+  document.getElementById('transferNote').value='';
+  const fromSel = document.getElementById('transferFrom');
+  const toSel = document.getElementById('transferTo');
+  const optHtml = def.pools.map(p=>`<option value="${p.key}">${poolLabel(state.activeAccount,p.key)}</option>`).join('');
+  fromSel.innerHTML = optHtml;
+  toSel.innerHTML = optHtml;
+  fromSel.value = def.pools[0].key;
+  toSel.value = def.pools[1] ? def.pools[1].key : def.pools[0].key;
+  onTransferPoolChange();
+}
+function onTransferPoolChange(){
+  const from = document.getElementById('transferFrom').value;
+  const to = document.getElementById('transferTo').value;
+  const hint = document.getElementById('transferHint');
+  if(from==='lent' || to==='lent'){
+    hint.textContent = to==='lent'
+      ? 'This records cash lent out to a friend — add their name in the note.'
+      : 'This records a friend repaying money they owed you.';
+  } else if(to==='investments' || to==='deposits'){
+    hint.textContent = 'This records a contribution into ' + poolLabel(state.activeAccount, to) + '.';
+  } else if(from==='investments' || from==='deposits'){
+    hint.textContent = 'This records a withdrawal from ' + poolLabel(state.activeAccount, from) + '.';
+  } else {
+    hint.textContent = '';
+  }
+}
+function submitTransfer(){
+  const amount = parseFloat(document.getElementById('transferAmt').value);
+  const date = document.getElementById('transferDate').value || todayISO();
+  const note = document.getElementById('transferNote').value.trim();
+  const poolFrom = document.getElementById('transferFrom').value;
+  const poolTo = document.getElementById('transferTo').value;
+  if(!amount || amount<=0){ toast('Enter a valid amount.'); return; }
+  if(poolFrom===poolTo){ toast('Pick two different pools.'); return; }
+  state.transactions.push({id:uid(), account: state.activeAccount, type:'transfer', date, amount, poolFrom, poolTo, note, updatedAt: Date.now()});
+  save();
+  toast('Transfer recorded.');
+  showView('dashboard');
+}
+
+/* ---------------------------------------------------------------
+   PROJECTION
+--------------------------------------------------------------- */
+function renderProjectionIfActive(){
+  if(document.getElementById('view-projection').classList.contains('active')) renderProjection();
+}
+function addMonths(ymStr, n){
+  let [y,m] = ymStr.split('-').map(Number);
+  m += n;
+  while(m>12){ m-=12; y+=1; }
+  while(m<1){ m+=12; y-=1; }
+  return y+'-'+String(m).padStart(2,'0');
+}
+function renderProjection(){
+  const acct = curAcctState();
+  const def = curDef();
+  document.getElementById('projEnd').value = acct.projectionEnd;
+  document.getElementById('projSpendLbl').textContent = 'Estimated future monthly spend ('+def.currency+')';
+  document.getElementById('projSpend').value = acct.projectedSpend;
+
+  const pastMonths = {};
+  for(const t of liveTransactions()){
+    if(t.type==='expense'){
+      const m = ym(t.date);
+      pastMonths[m] = (pastMonths[m]||0)+t.amount;
+    }
+  }
+  const pastKeys = Object.keys(pastMonths).filter(m=>m < todayISO().slice(0,7));
+  if(pastKeys.length){
+    const avg = pastKeys.reduce((s,k)=>s+pastMonths[k],0)/pastKeys.length;
+    document.getElementById('projSpendHint').textContent = `Your average recorded month so far: ${fmtMoney(avg)}.`;
+  } else {
+    document.getElementById('projSpendHint').textContent = 'No full past month recorded yet — using your estimate above.';
+  }
+
+  const {total} = computePools();
+  const curYm = todayISO().slice(0,7);
+  const endYm = acct.projectionEnd.slice(0,7);
+
+  let rows = [];
+  rows.push({label: monthLabel(curYm)+' (now)', expense:'—', balance: total, milestone:true});
+
+  let running = total;
+  let m = addMonths(curYm, 1);
+  let guard = 0;
+  while(m <= endYm && guard < 60){
+    const expense = acct.projectedSpend;
+    running -= expense;
+    rows.push({label: monthLabel(m), expense, balance: running, milestone: m===endYm});
+    m = addMonths(m,1);
+    guard++;
+  }
+
+  const table = document.getElementById('projTable');
+  table.innerHTML = `
+    <tr><th>Month</th><th>Spend</th><th>Balance</th></tr>
+    ${rows.map(r=>`<tr class="${r.milestone?'milestone':''}">
+      <td>${r.label}</td>
+      <td>${r.expense==='—'?'—':fmtMoney(r.expense)}</td>
+      <td class="${r.balance<0?'neg':''}">${fmtMoney(r.balance)}</td>
+    </tr>`).join('')}
+  `;
+}
+function saveProjSettings(){
+  const acct = curAcctState();
+  acct.projectionEnd = document.getElementById('projEnd').value || acct.projectionEnd;
+  acct.projectedSpend = parseFloat(document.getElementById('projSpend').value)||acct.projectedSpend;
+  save();
+  renderProjection();
+}
+
+/* ---------------------------------------------------------------
+   SETTINGS
+--------------------------------------------------------------- */
+function renderSettings(){
+  const def = curDef();
+  const acct = curAcctState();
+  const {pools} = computePools();
+
+  document.getElementById('setSheetUrl').value = state.sheetUrl || '';
+  document.getElementById('setSheetSecret').value = state.sheetSecret || '';
+
+  document.getElementById('foodBudgetSettingsCard').style.display = def.hasFoodBudget ? 'block' : 'none';
+  if(def.hasFoodBudget){
+    document.getElementById('setBudgetCardFood').value = acct.budgetCardFood || '';
+    document.getElementById('setBudgetCashFood').value = acct.budgetCashFood || '';
+  }
+
+  const bankCard = document.getElementById('bankNamesCard');
+  const bankPools = def.pools.filter(p=>p.bankNameKey);
+  if(bankPools.length){
+    bankCard.style.display = 'block';
+    document.getElementById('bankNamesWrap').innerHTML = bankPools.map(p=>`
+      <label class="field">
+        <span class="lbl">${p.label}</span>
+        ${p.bankNameOptions ? `
+        <select class="bankNameInput" data-key="${p.bankNameKey}">
+          <option value="">Choose a bank…</option>
+          ${p.bankNameOptions.map(o=>`<option value="${escapeHtml(o)}" ${((acct.bankNames||{})[p.bankNameKey]===o)?'selected':''}>${o}</option>`).join('')}
+        </select>` : `
+        <input type="text" class="bankNameInput" data-key="${p.bankNameKey}" value="${escapeHtml((acct.bankNames||{})[p.bankNameKey] || '')}" placeholder="${p.label}">`}
+      </label>
+    `).join('');
+  } else {
+    bankCard.style.display = 'none';
+  }
+
+  document.getElementById('balAcctLabel').textContent = def.flag + ' ' + def.label;
+  document.getElementById('startingBalancesWrap').innerHTML = def.pools.map(p=>`
+    <label class="field">
+      <span class="lbl">${poolLabel(state.activeAccount,p.key)} (${def.currency})</span>
+      <input type="number" class="startBalInput" data-key="${p.key}" value="${Math.round(pools[p.key]||0)}">
+    </label>
+  `).join('');
+
+  updateSyncStatus();
+}
+function saveBudgetSettings(){
+  const acct = curAcctState();
+  acct.budgetCardFood = parseFloat(document.getElementById('setBudgetCardFood').value)||0;
+  acct.budgetCashFood = parseFloat(document.getElementById('setBudgetCashFood').value)||0;
+  save();
+  toast('Food budgets saved.');
+  renderFoodBudgets();
+}
+function saveBankNames(){
+  const acct = curAcctState();
+  acct.bankNames = acct.bankNames || {};
+  document.querySelectorAll('#bankNamesWrap .bankNameInput').forEach(inp=>{
+    acct.bankNames[inp.dataset.key] = inp.value.trim();
+  });
+  state.accountsUpdatedAt = Date.now();
+  save();
+  toast('Bank names saved.');
+  renderSettings();
+}
+function updateSyncStatus(){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  if(!state.sheetUrl){ el.textContent = 'Not connected yet.'; return; }
+  el.textContent = state.lastSynced ? ('Last synced: ' + new Date(state.lastSynced).toLocaleString()) : 'Connected — not synced yet.';
+}
+function saveSheetSettings(){
+  state.sheetUrl = document.getElementById('setSheetUrl').value.trim();
+  state.sheetSecret = document.getElementById('setSheetSecret').value.trim();
+  save();
+  toast('Sync connection saved.');
+  updateSyncStatus();
+}
+function saveStartingBalances(){
+  // Reconciliation: reset base pools so computed totals match entered figures,
+  // by nulling out prior transaction effects (base = desired - sum-of-effects).
+  const acct = curAcctState();
+  const {pools} = computePools();
+  document.querySelectorAll('#startingBalancesWrap .startBalInput').forEach(inp=>{
+    const key = inp.dataset.key;
+    const desired = parseFloat(inp.value)||0;
+    const delta = desired - (pools[key]||0);
+    acct.pools[key] = (acct.pools[key]||0) + delta;
+  });
+  state.accountsUpdatedAt = Date.now();
+  save();
+  toast('Balances reconciled.');
+  renderDashboard();
+}
+function exportData(){
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'kakeibo-backup-'+todayISO()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded.');
+}
+function importData(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      state = Object.assign(defaultState(), parsed);
+      state.accounts = Object.assign({jp:defaultAccountState('jp'), lk:defaultAccountState('lk')}, parsed.accounts||{});
+      save();
+      toast('Backup imported.');
+      showView('dashboard');
+    }catch(err){ toast('Invalid backup file.'); }
+  };
+  reader.readAsText(file);
+}
+function resetAll(){
+  if(!confirm('This deletes ALL data (both accounts) on this device permanently. Continue?')) return;
+  if(!confirm('Are you absolutely sure? This cannot be undone.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(OLD_STORAGE_KEY);
+  state = defaultState();
+  location.reload();
+}
+
+/* ---------------------------------------------------------------
+   GOOGLE SHEETS SYNC
+--------------------------------------------------------------- */
+function normalizeRemoteRow(r){
+  return {
+    id: String(r.id),
+    account: (r.account==='lk') ? 'lk' : 'jp',
+    type: r.type,
+    date: r.date ? String(r.date).slice(0,10) : '',
+    category: r.category || undefined,
+    pool: r.pool || undefined,
+    poolFrom: r.poolFrom || undefined,
+    poolTo: r.poolTo || undefined,
+    cardTag: r.cardTag || undefined,
+    amount: Number(r.amount)||0,
+    note: r.note || '',
+    oneOff: (r.oneOff===true || r.oneOff==='true' || r.oneOff===1 || r.oneOff==='1') || undefined,
+    deleted: (r.deleted===true || r.deleted==='true' || r.deleted===1 || r.deleted==='1') || undefined,
+    updatedAt: Number(r.updatedAt)||0
+  };
+}
+function mergeRemote(remoteRows){
+  const byId = {};
+  state.transactions.forEach(t=>{ byId[t.id]=t; });
+  remoteRows.forEach(raw=>{
+    const norm = normalizeRemoteRow(raw);
+    if(!norm.id) return;
+    const existing = byId[norm.id];
+    if(!existing || (norm.updatedAt||0) > (existing.updatedAt||0)){
+      byId[norm.id] = norm;
+    }
+  });
+  state.transactions = Object.values(byId);
+}
+async function syncNow(silent){
+  if(!state.sheetUrl){
+    if(!silent) toast('Add your Web App URL in Settings first.');
+    return;
+  }
+  const btn = document.getElementById('syncBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Syncing…'; }
+  try{
+    // Push local (including tombstoned) transactions, plus account balances/settings.
+    await fetch(state.sheetUrl, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'}, // avoids CORS preflight against Apps Script
+      body: JSON.stringify({
+        secret: state.sheetSecret,
+        transactions: state.transactions,
+        accounts: state.accounts,
+        accountsUpdatedAt: state.accountsUpdatedAt || 0
+      })
+    });
+    // Pull everything back and merge by id, newest updatedAt wins.
+    const res = await fetch(state.sheetUrl + '?secret=' + encodeURIComponent(state.sheetSecret));
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    mergeRemote(data.transactions || []);
+    if(data.accounts && Number(data.accountsUpdatedAt||0) > Number(state.accountsUpdatedAt||0)){
+      // Remote account settings/balances are newer — take them, preserving local sheet/sync fields.
+      state.accounts.jp = Object.assign(defaultAccountState('jp'), data.accounts.jp||{});
+      state.accounts.lk = Object.assign(defaultAccountState('lk'), data.accounts.lk||{});
+      state.accountsUpdatedAt = Number(data.accountsUpdatedAt||0);
+    }
+    state.lastSynced = Date.now();
+    save();
+    if(!silent) toast('Synced with Google Sheets.');
+  }catch(err){
+    console.error(err);
+    if(!silent) toast('Sync failed — check URL/secret in Settings.');
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '⇅ Sync now'; }
+    updateSyncStatus();
+    renderDashboard(); renderHistory(); renderIncome(); renderProjectionIfActive();
+  }
+}
+
+/* ---------------------------------------------------------------
+   FIRST-RUN SETUP
+--------------------------------------------------------------- */
+function maybeShowSetup(){
+  if(state.setupDone) return;
+  const overlay = document.createElement('div');
+  overlay.className='overlay'; overlay.id='setupOverlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h2>Welcome to your ledger</h2>
+      <div class="sub">Quick one-time setup for your Japan account. You can add Sri Lanka balances afterward in Settings (switch account at the top), and change any of this later.</div>
+      <label class="field"><span class="lbl">Cash in hand right now (¥)</span><input type="number" id="setupHand" value="0"></label>
+      <label class="field"><span class="lbl">Cash at bank right now (¥)</span><input type="number" id="setupBank" value="522725"></label>
+      <label class="field"><span class="lbl">Project balance through</span><input type="date" id="setupProjEnd" value="2027-12-31"></label>
+      <button class="btn" onclick="completeSetup()">Start tracking</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function completeSetup(){
+  state.accounts.jp.pools.hand = parseFloat(document.getElementById('setupHand').value)||0;
+  state.accounts.jp.pools.bank = parseFloat(document.getElementById('setupBank').value)||0;
+  state.accounts.jp.projectionEnd = document.getElementById('setupProjEnd').value || '2027-12-31';
+  state.setupDone = true;
+  state.accountsUpdatedAt = Date.now();
+  save();
+  document.getElementById('setupOverlay').remove();
+  showView('dashboard');
+}
+
+/* ---------------------------------------------------------------
+   INIT
+--------------------------------------------------------------- */
+document.querySelectorAll('#acctSwitch button').forEach(b=>b.classList.toggle('active', b.dataset.acct===state.activeAccount));
+showView('dashboard');
+maybeShowSetup();
+
+if(state.sheetUrl){
+  // Best-effort silent sync shortly after load, so open-app-on-the-go stays current.
+  setTimeout(()=>syncNow(true), 800);
+}
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+// Real-time date awareness: if this tab/app stays open across midnight,
+// "today" (used for month labels, weekly budget windows, default entry
+// dates, etc.) updates on its own without needing a manual refresh.
+let _lastKnownDate = todayISO();
+setInterval(()=>{
+  const nowIso = todayISO();
+  if(nowIso !== _lastKnownDate){
+    _lastKnownDate = nowIso;
+    if(document.getElementById('view-dashboard').classList.contains('active')) renderDashboard();
+    if(document.getElementById('view-history').classList.contains('active')) renderHistory();
+    if(document.getElementById('view-projection').classList.contains('active')) renderProjection();
+  }
+}, 30000); // check every 30s — cheap, and no visible lag crossing midnight
+
+// Also re-check immediately whenever the app regains focus/visibility —
+// covers the common case of it sitting backgrounded overnight on iOS.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible'){
+    const nowIso = todayISO();
+    if(nowIso !== _lastKnownDate){
+      _lastKnownDate = nowIso;
+    }
+    renderDashboard();
+    if(document.getElementById('view-history').classList.contains('active')) renderHistory();
+    if(document.getElementById('view-projection').classList.contains('active')) renderProjection();
+  }
+});
+</script>
+</body>
+</html>
